@@ -1,0 +1,1 @@
+Beside InterSense runtime (isense.dll) DirectX8 runtime is also required.
