@@ -2,21 +2,19 @@
  *
  *		Implementierung der Klasse MazeIO.
  *
- *		@date		2003-10-20
- *		@version	0.6
+ *		@date		2003-10-25
+ *		@version	0.7
  */
 
 #include "MazeIO.h"
-#include <stdio.h>
 
 MazeIO::MazeIO()
 {
-
-}
-
-MazeIO::~MazeIO()
-{
-
+	//_mode = MIOMODE_HMDJOYSTICK1;
+	//_mode = MIOMODE_HMDJOYSTICK1;
+	//_mode = MIOMODE_JOYSTICK;
+	//_mode = MIOMODE_MOUSE;
+	_mode = MIOMODE_KEYBOARD;
 }
 
 long MazeIO::open(HWND hwnd)
@@ -55,70 +53,50 @@ bool MazeIO::close()
 	return true;
 }
 
-long MazeIO::getData(float pos[])
+void MazeIO::setMode(int mode)
+{
+	_mode = mode;
+}
+
+int MazeIO::getMode()
+{
+	return _mode;
+}
+
+bool MazeIO::getJoyState(JoyState *joyState)
+{
+	return _Joystick.getState(joyState);
+}
+
+bool MazeIO::getHMDState(float orientation[])
+{
+	return _Intertrax.getState(orientation);
+}
+
+bool MazeIO::getMouseState(LPDIMOUSESTATE mouseState)
 {
 	HRESULT res;
-	JoyState joyState;
-	float ori[4];
 
 	res = _Mouse.acquire();
 
 	if (res == DI_OK || res == S_FALSE)
 	{
-		if (!_Mouse.getDeviceState(sizeof(DIMOUSESTATE), &_mouseState))
-		{
-			printf("Getting mouse data failed.\n");
-			return false;
-		}
+		return _Mouse.getDeviceState(sizeof(DIMOUSESTATE), mouseState);
 	}
-	
-	printf("[M: x:%3d y:%3d] ", _mouseState.lX, _mouseState.lY);
+
+	return false;
+}
+
+bool MazeIO::getKeyboardState(char *keys)
+{
+	HRESULT res;
 
 	res = _Keyboard.acquire();
 
 	if (res == DI_OK || res == S_FALSE)
 	{
-		if (!_Keyboard.getDeviceState(sizeof(_keys), _keys))
-		{
-			printf("Getting keyboard data failed.\n");
-			return false;
-		}
+		return _Keyboard.getDeviceState(256, keys);
 	}
 
-	printf("[K: %d%d%d%d] ",
-		_keys[DIK_UP] ? true : false,
-		_keys[DIK_DOWN] ? true : false,
-		_keys[DIK_LEFT] ? true : false,
-		_keys[DIK_RIGHT] ? true : false);
-
-	if (!_Joystick.getState(&joyState))
-	{
-		printf("Getting keyboard data failed.\n");
-		return false;
-	}
-
-	pos[0] = joyState.pos[0];
-	pos[1] = joyState.pos[1];
-	pos[2] = joyState.pos[2];
-
-	printf("[J: x:%2.1f y:%2.1f %d%d%d%d] ",
-		joyState.pos[0],
-		joyState.pos[1],
-		joyState.buttons & JOY_BUTTON1 ? true : false,
-		joyState.buttons & JOY_BUTTON2 ? true : false,
-		joyState.buttons & JOY_BUTTON3 ? true : false,
-		joyState.buttons & JOY_BUTTON4 ? true : false);
-
-	if (!_Intertrax.getData(ori))
-	{
-		printf("Getting tracker data failed.\n");
-		return false;
-	}
-
-	printf("[T: x:%4.1f y:%4.1f z:%4.1f] \r",
-		ori[0],
-		ori[1],
-		ori[2]);
-
-	return true;
+	return false;
 }

@@ -18,18 +18,13 @@
 #include <string.h>
 #include <mmsystem.h>
 #include "../res/resource.h"
-#include "../mazeio/MazeIO.h"
+#include "input.h"
+#include "Camera.h"
 
 HDC			hDC=NULL;
 HGLRC		hRC=NULL;
 HWND		hWnd=NULL;
 HINSTANCE	hInstance;
-
-
-MazeIO _MazeIO;
-
-char	joystring[255];
-bool	button[4];
 
 bool	keys[255];
 bool	active=TRUE;
@@ -49,11 +44,9 @@ bool	blJoystick=true;
 const float piover180 = 0.0174532925f; // PI / 180
 const float my_border = 10.0;
 
-float heading;
-float xpos=0.5;
-float zpos=-0.5;
-float xMove;
-float zMove;
+//ABSOLUTE CAMERA TRANSFORMATION AND ORIENTATION
+Camera _Camera(-0.5, -0.5, 0.5, 0.0, 0.0, 0.0);
+
 float PosY=0.0f,PosX=0.0f;
 float DoorPosition0=0.0f;		//  0=closed 1=open
 float DoorPosition1=-91.0f;		//  -90=closed 0=open
@@ -92,7 +85,6 @@ char ClientId='0';
 char EnemyCounter=0;
 char wtfBuffer[255];
 
-GLfloat	yrot;
 GLfloat walkbias = 0.5;
 GLfloat walkbiasangle = 0;
 GLfloat lookupdown = 0.0f;
@@ -186,10 +178,14 @@ void CheckCameraCollision(SECTOR pVertices, int numOfVerts)
 {	
 
 	CVector3 m_vPosition;
+/*
 	m_vPosition.x = xpos;
 	m_vPosition.y = walkbias;
 	m_vPosition.z = zpos;
-
+*/
+	m_vPosition.x = -_Camera[0];
+	m_vPosition.y = -_Camera[1];
+	m_vPosition.z = -_Camera[2];
 	float m_radius=0.2f;
 	
 	// This function is pretty much a direct rip off of SpherePolygonCollision()
@@ -272,9 +268,12 @@ void CheckCameraCollision(SECTOR pVertices, int numOfVerts)
 				vOffset = GetCollisionOffset(vNormal, m_radius, distance);
 
 				// --------Aenderung-------------------------------------
-				
+				/*
 				zpos=zpos+vOffset.z;
 				xpos=xpos+vOffset.x;
+				*/
+				_Camera[0] -= vOffset.x;
+				_Camera[2] -= vOffset.z;
 
 				// --------Aenderung Ende--------------------------------
 
@@ -301,7 +300,7 @@ void itgParser(char string[255])
 {
 	char seps[]   = " ;";
 	char *token ;
-	char *printout1;
+	//char *printout1;
 
 	//printf( "%s\n\nTokens:\n", string );
    /* Establish string and get the first token: */
@@ -679,24 +678,15 @@ int DrawGLScene(GLvoid)
 	
 	/*-----------erweitert von den Autoren --Ende-------------------------------*/
 
-	GLfloat xtrans = -xpos;
-	GLfloat ztrans = -zpos;
-	GLfloat ytrans = -walkbias;
-	GLfloat sceneroty = 360.0f - yrot;
-
 	int numtriangles;
 	int upset;
 
 	numtriangles = sector1.numtriangles;
 
-	xpos=xpos+xMove ;
-	zpos=zpos+zMove ;
-
-	glRotatef(lookupdown,1.0f,0,0);
-	glRotatef(sceneroty,0,1.0f,0);
-
-	glTranslatef(xtrans, ytrans, ztrans);
-
+	glRotatef(_Camera[3], 1.0f, 0.0, 0.0);
+	glRotatef(_Camera[5], 0.0, 0.0, 1.0f);
+	glRotatef(_Camera[4], 0.0, 1.0f, 0.0);
+	glTranslatef(_Camera[0], _Camera[1], _Camera[2]);
 
 	for (int loop_m = 0; loop_m < numtriangles; loop_m++)
 	{
@@ -742,8 +732,11 @@ int DrawGLScene(GLvoid)
 
 	}
 
+//CAMERA HACK
+/*
 	xMove=0.0;												// Bewegung auf 0 setzen
 	zMove=0.0;												// sonst staendige Bewegung
+*/
 	return TRUE;
 }
 
@@ -892,6 +885,8 @@ BOOL CreateGLWindow(char* title, int width, int height, int bits, bool fullscree
 		return FALSE;
 	}
 
+	//MAZEIO CAN ONLY BE INITIALIZED WHEN WE GOT THE WINDOW HANDLE
+	inp_InitMazeIO(hWnd);
 
 	static	PIXELFORMATDESCRIPTOR pfd=				// pfd Tells Windows How We Want Things To Be
 	{
@@ -1040,42 +1035,6 @@ LRESULT CALLBACK WndProc(	HWND	hWnd,			// Handle For This Window
 	return DefWindowProc(hWnd,uMsg,wParam,lParam);
 }
 
-/**
- * Initialize the MazeIO subsystem. Shows a message box if opening of any
- * input device fails.
- *
- */
-bool initMazeIO(HWND window)
-{
-	long res;
-	bool hmd = true, jst = true, mouse = true, keyboard = true;
-	char str[128];
-
-	res = _MazeIO.open(window);
-
-	if (res & MIOERR_INTERTRAX)
-		hmd = false;
-	if (res & MIOERR_JOYSTICK)
-		jst = false;
-	if (res & MIOERR_MOUSE)
-		mouse = false;
-	if (res & MIOERR_KEYBOARD)
-		keyboard = false;
-
-	if(res != MIO_OK)
-	{
-		sprintf(str, "MazeIO tried to open the input devices:\n\nHMD\t\t%d\nJoystick\t\t%d\nMouse\t\t%d\nKeyboard\t\t%d",
-			hmd, jst, mouse, keyboard);
-		MessageBox(window, str, "MazeIO Initialization", MB_OK);
-	}
-
-	return res == MIO_OK ? true : false;
-}
-
-void getInput(float pos[3])
-{
-	_MazeIO.getData(pos);
-}
 
 /*-------------extracted from NeHe tutorial #10-----------------------------*/
 /*------------erweitert von den Autoren-------------------------------------*/
@@ -1103,7 +1062,7 @@ int WINAPI WinMain(	HINSTANCE	hInstance,			// Instance
 	}
 
 	//MAZEIO CAN ONLY BE INITIALIZED WHEN WE GOT THE WINDOW HANDLE
-	//initMazeIO(hWnd);
+	//inp_InitMazeIO(hWnd);
 
 	while(!done)									// Loop That Runs While done=FALSE
 	{
@@ -1151,13 +1110,12 @@ int WINAPI WinMain(	HINSTANCE	hInstance,			// Instance
 /*-------------Erweiterung -------------------------------------------------------*/
 				if (keys['S'])
 				{
-					xpos=0.5f;
-					zpos=0.5f;
+					_Camera[0] = -0.5f;
+					_Camera[2] = 0.5f;
+					_Camera[4] = 0;
 					fltEbene=0.1f;
 					walkbias=-0.5f;
-					yrot=0.0f;
 					walkbiasangle=0.0f;
-					heading=0.0f;
 
 					LiftUp=1;
 					LiftDown=0;
@@ -1180,91 +1138,6 @@ int WINAPI WinMain(	HINSTANCE	hInstance,			// Instance
 				{
 					if (blKollision) 
 						blKollision=false;
-				}
-
-				if (keys['Q'])
-				{
-					walkbias=+2.5f;
-					fltEbene=0.5f;
-					LiftUp2=0;
-					LiftDown2=1;
-					LiftKey2=0;
-				}
-
-				if (keys['A'])
-				{
-					walkbias=0.5f;
-					fltEbene=0.3f;
-
-					LiftUp=0;
-					LiftDown=1;
-					LiftKey1=0;
-					
-					LiftUp2=1;
-					LiftDown2=0;
-					LiftKey2=0;
-				}
-
-				if (keys['Y'])
-				{
-					LiftUp=1;
-					LiftDown=0;
-					LiftKey1=0;
-					
-					LiftUp2=1;
-					LiftDown2=0;
-					LiftKey2=0;
-
-					walkbias=-0.5f;
-					fltEbene=0.1f;
-				}
-
-				if (keys['N'])
-				{
-					xMove = -(float)sin((heading+90.0f)*piover180) * fltMovement; 
-					zMove = -(float)cos((heading+90.0f)*piover180) * fltMovement;
-				}
-				
-				if (keys['M'])
-				{
-					xMove = +(float)sin((heading+90.0f)*piover180) * fltMovement;
-					zMove = +(float)cos((heading+90.0f)*piover180) * fltMovement;
-				}
-				
-				if (keys[VK_UP])
-				{
-					xMove = -(float)sin(heading*piover180) * fltMovement;
-					zMove = -(float)cos(heading*piover180) * fltMovement;
-				}
-
-				if (keys[VK_DOWN])
-				{
-					xMove = +(float)sin(heading*piover180) * fltMovement;
-					zMove = +(float)cos(heading*piover180) * fltMovement;
-				}
-
-				if (keys[VK_RIGHT])
-				{
-					heading -= (60*fltMovement);
-					yrot = heading;
-					blMultiPlayerSendPosition=true;
-				}
-
-				if (keys[VK_LEFT])
-				{
-					heading += (60*fltMovement);
-					yrot = heading;
-					blMultiPlayerSendPosition=true;
-				}
-
-				if (keys[VK_PRIOR])
-				{
-					lookupdown-= 0.2f;
-				}
-
-				if (keys[VK_NEXT])
-				{
-					lookupdown+= 0.2f;
 				}
 
 				if (keys['E'])
@@ -1294,8 +1167,7 @@ int WINAPI WinMain(	HINSTANCE	hInstance,			// Instance
 					strcat(MsgMsg,"Cursor Keys	:	Move / Rotate\n");
 					strcat(MsgMsg,"Page Up		:	Look up\n");
 					strcat(MsgMsg,"Page Down	:	Look down\n");
-					strcat(MsgMsg,"N		:	Slide left\n");
-					strcat(MsgMsg,"M		:	Slide right\n");
+					strcat(MsgMsg,"Backspace	:	UpRight\n");
 					strcat(MsgMsg,"S		:	Reset to Startpoint \n");
 					strcat(MsgMsg,"W		:	Wireframe mode on\n");
 					strcat(MsgMsg,"E		:	Wireframe mode off\n");
@@ -1343,75 +1215,20 @@ int WINAPI WinMain(	HINSTANCE	hInstance,			// Instance
 					}
 				}
 
-				//Joystick jst;
-				//JoyState state;
-				//bool button[4];
+				//SWITCH INPUT MODI
+				if (keys['1'])
+					inp_SwitchMode(MIOMODE_HMDJOYSTICK1);
+				if (keys['2'])
+					inp_SwitchMode(MIOMODE_HMDJOYSTICK2);
+				if (keys['3'])
+					inp_SwitchMode(MIOMODE_JOYSTICK);
+				if (keys['4'])
+					inp_SwitchMode(MIOMODE_MOUSE);
+				if (keys['5'])
+					inp_SwitchMode(MIOMODE_KEYBOARD);
+				//HANDLE INPUT AND MANIPULATE CAMERA
+				inp_Handle(_Camera);
 
-
-
-				//while 
-/*
-				float pos[3];
-
-				getInput(pos);
-
-				heading -= (60*fltMovement*pos[0]);
-				yrot = heading;
-				xMove = +(float)sin(heading*piover180) * fltMovement * pos[1];
-				zMove = +(float)cos(heading*piover180) * fltMovement * pos[1];
-*/
-//REPLACE WITH MAZEIO
-/*
-				if(state.pos[1] < 1.01 && blJoystick)
-				{
-					if (!jst.getState(&state))
-					{
-						//return 1;
-						
-					}
-					else
-					{
-						button[0] = state.buttons & JOY_BUTTON1 ? true : false;
-						button[1] = state.buttons & JOY_BUTTON2 ? true : false;
-						button[2] = state.buttons & JOY_BUTTON3 ? true : false;
-						button[3] = state.buttons & JOY_BUTTON4 ? true : false;
-
-						heading -= (60*fltMovement*state.pos[0]);
-						yrot = heading;
-
-					
-						if (!keys[VK_UP] && !keys[VK_DOWN])
-						{
-							xMove = +(float)sin(heading*piover180) * fltMovement * state.pos[1];
-							zMove = +(float)cos(heading*piover180) * fltMovement * state.pos[1];
-						}
-					
-
-						sprintf(joystring,"x:%2.2f y:%2.2f z:%2.2f b1:%d b2:%d b3:%d b4:%d xM:%f zM:%f\r",
-						state.pos[0],
-						state.pos[1],
-						state.pos[2],
-						button[0],
-						button[1],
-						button[2],
-						button[3],
-						xMove,
-						zMove);
-
-						//Sleep(10);
-						if (state.pos[0] +
-							state.pos[1] +
-							state.pos[2] +
-							button[0]    +
-							button[1]    +
-							button[2]    +
-							button[3]>0.0)
-						{
-							writeToFile(joystring);
-						}
-					}//if (!jst.getState(&state))
-				}//if(state.pos[1] < 1.0)
-*/
 			}//if ((active && !DrawGLScene()) || keys[VK_ESCAPE])
 		}
 	}

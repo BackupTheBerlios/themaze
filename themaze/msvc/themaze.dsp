@@ -96,6 +96,14 @@ SOURCE=..\src\3DMath.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=..\src\Camera.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\input.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=..\src\Lesson10.cpp
 # End Source File
 # End Group
@@ -105,6 +113,14 @@ SOURCE=..\src\Lesson10.cpp
 # Begin Source File
 
 SOURCE=..\src\3DMath.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\Camera.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\src\input.h
 # End Source File
 # Begin Source File
 
@@ -127,5 +143,9 @@ SOURCE=..\res\icon1.ico
 SOURCE=..\res\Skript1.rc
 # End Source File
 # End Group
+# Begin Source File
+
+SOURCE=..\doc\readme.txt
+# End Source File
 # End Target
 # End Project

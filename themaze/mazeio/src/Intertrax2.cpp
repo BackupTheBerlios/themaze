@@ -37,7 +37,7 @@ bool Intertrax2::close()
 	return ISD_CloseTracker(_handle) ? true : false;
 }
 
-bool Intertrax2::getData(float orientation[])
+bool Intertrax2::getState(float orientation[])
 {
 	ISD_TRACKER_DATA_TYPE data;
 

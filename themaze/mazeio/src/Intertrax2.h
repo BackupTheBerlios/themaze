@@ -17,12 +17,15 @@
 class Intertrax2  
 {
 public:
-	bool reset();
-	
+
+	Intertrax2();
+
+	bool open();
+	bool close();
 	/**
 	 * Returns data in 
 	 */
-	bool getData(float orientation[4]);
+	bool getState(float orientation[4]);
 	/**
 	 * Set data format. Tracker can return euler angles (default) or
 	 * quaternions.
@@ -33,9 +36,8 @@ public:
 	 *				false	.. on failure
 	 */
 	bool setDataFormat(DWORD format);
-	bool close();
-	bool open();
-	Intertrax2();
+
+	bool reset();
 
 private:
 
