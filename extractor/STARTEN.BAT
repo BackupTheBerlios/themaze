@@ -1,1 +1,0 @@
-java -classpath .\;.\Lib\jai_codec.jar;.\Lib\jai_core.jar Labyrinth
